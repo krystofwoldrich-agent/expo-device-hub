@@ -24,6 +24,7 @@ export const NOOP_DEVICE_CLIENT: DeviceClient = {
   deviceSettingsPending: new Set(),
   setDeviceSetting: () => {},
   streamCapabilities: null,
+  capture: null,
   streamSettings: null,
   streamSettingsPending: false,
   updateStreamSettings: () => {},

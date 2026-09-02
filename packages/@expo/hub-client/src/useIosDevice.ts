@@ -1409,6 +1409,7 @@ export function useIosDeviceClient(options: DeviceConnectionOptions): DeviceClie
     deviceSettingsPending,
     setDeviceSetting,
     streamCapabilities: IOS_STREAM_CAPABILITIES,
+    capture: null,
     streamSettings,
     streamSettingsPending,
     updateStreamSettings,

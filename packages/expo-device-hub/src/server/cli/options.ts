@@ -16,6 +16,12 @@ export const WEBRTC_CODECS = ['vp8', 'vp9', 'h264'] as const satisfies readonly 
 export const DEFAULT_WEBRTC_ICE_POLICY = 'all';
 export const WEBRTC_ICE_POLICIES = ['all', 'relay'] as const;
 export type WebRtcIcePolicy = (typeof WEBRTC_ICE_POLICIES)[number];
+export const ANDROID_CAPTURE_SOURCES = [
+  'scrcpy',
+  'grpc-screenshot',
+  'grpc-stream',
+] as const;
+export type AndroidCaptureSource = (typeof ANDROID_CAPTURE_SOURCES)[number];
 
 export const HELP = `expo-device-hub — manage iOS simulators and Android emulators from the browser
 
@@ -25,6 +31,7 @@ Options:
   -p, --port <port>          Port to listen on (default: ${DEFAULT_PORT}, or the next available port)
       --host <host>          Host to bind (default: 127.0.0.1; use 0.0.0.0 to expose on your local network)
       --platform <platform>  Show only iOS simulators or Android emulators (ios or android)
+      --android-capture-source <source> Android emulator capture source: ${ANDROID_CAPTURE_SOURCES.join(', ')} (default: scrcpy)
       --transport <transport> Preferred transport: ${TRANSPORTS.join(', ')} (default: ${DEFAULT_TRANSPORT})
       --webrtc-codec <codec> WebRTC video codec: ${WEBRTC_CODECS.join(', ')} (default: ${DEFAULT_WEBRTC_CODEC})
       --max-dimension <pixels> Maximum captured width or height; 0 keeps native resolution (0-4096)
@@ -46,6 +53,7 @@ export type CliOptions = {
   port?: number;
   host: string;
   platform?: PlatformFilter;
+  androidCaptureSource?: AndroidCaptureSource;
   transport?: Transport;
   webrtcCodec?: WebRtcStreamCodec;
   maxDimension?: number;
@@ -113,6 +121,7 @@ export function parseCliOptions(args: string[]): CliOptions {
     port?: string;
     host: string;
     platform?: string;
+    'android-capture-source'?: string;
     transport?: string;
     'webrtc-codec'?: string;
     'max-dimension'?: string;
@@ -139,6 +148,7 @@ export function parseCliOptions(args: string[]): CliOptions {
         // v6-only listener leaves the advertised stream/ws endpoints unreachable.
         host: { type: 'string', default: '127.0.0.1' },
         platform: { type: 'string' },
+        'android-capture-source': { type: 'string' },
         transport: { type: 'string' },
         'webrtc-codec': { type: 'string' },
         'max-dimension': { type: 'string' },
@@ -170,6 +180,20 @@ export function parseCliOptions(args: string[]): CliOptions {
   const platform = parsePlatformFilter(values.platform);
   if (values.platform !== undefined && platform === undefined) {
     throw new Error(`Invalid --platform: ${values.platform}\n\n${HELP}`);
+  }
+
+  const androidCaptureSource = ANDROID_CAPTURE_SOURCES.includes(
+    values['android-capture-source'] as AndroidCaptureSource,
+  )
+    ? (values['android-capture-source'] as AndroidCaptureSource)
+    : undefined;
+  if (values['android-capture-source'] !== undefined && androidCaptureSource === undefined) {
+    throw new Error(
+      `Invalid --android-capture-source: ${values['android-capture-source']}\n\n${HELP}`,
+    );
+  }
+  if (androidCaptureSource !== undefined && platform === 'ios') {
+    throw new Error(`--android-capture-source is supported only for Android.\n\n${HELP}`);
   }
 
   const transport = parseTransport(values.transport);
@@ -242,6 +266,7 @@ export function parseCliOptions(args: string[]): CliOptions {
     port,
     host: values.host,
     platform,
+    androidCaptureSource,
     transport,
     webrtcCodec,
     maxDimension,

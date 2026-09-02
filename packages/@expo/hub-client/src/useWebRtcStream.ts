@@ -116,6 +116,7 @@ export function useWebRtcStream({
   sendIceServersInOffer = true,
   allowCodecFallback = true,
   onKeyframeNeeded,
+  restartKey = 0,
 }: {
   offerUrl: string;
   closeUrl: string;
@@ -126,6 +127,8 @@ export function useWebRtcStream({
   sendIceServersInOffer?: boolean;
   allowCodecFallback?: boolean;
   onKeyframeNeeded?: () => void;
+  /** Recreate the peer when its upstream media session changes in place. */
+  restartKey?: string | number;
 }) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [failure, setFailure] = useState<WebRtcStreamFailure | null>(null);
@@ -157,6 +160,7 @@ export function useWebRtcStream({
     iceTransportPolicy,
     sendIceServersInOffer,
     allowCodecFallback,
+    restartKey,
   ]);
 
   useEffect(() => {
@@ -422,6 +426,7 @@ export function useWebRtcStream({
     sendIceServersInOffer,
     allowCodecFallback,
     onKeyframeNeeded,
+    restartKey,
     retryGeneration,
   ]);
 

@@ -32,6 +32,11 @@ import {
   parseAndroidDeviceSetting,
 } from './android-device-settings';
 import {
+  type AndroidCaptureSnapshot,
+  androidCaptureErrorMessage,
+  parseAndroidCaptureSnapshot,
+} from './android-capture';
+import {
   DeviceSettingWriteTracker,
   mergeAuthoritativeDeviceSetting,
 } from './device-setting-writes';
@@ -40,8 +45,10 @@ import { androidMessageForKeyboardInput } from './keyboard';
 import { MsePlayer } from './mse-player';
 import { type WebRtcIceServer, useWebRtcStream } from './useWebRtcStream';
 import {
+  type AndroidCaptureSource,
   type ConnectionStatus,
   type DeviceAppearance,
+  type DeviceCaptureController,
   type DeviceClient,
   type DeviceConnectionOptions,
   type DeviceEvent,
@@ -62,6 +69,7 @@ const KEYFRAME_REQUEST_COOLDOWN_MS = 1500;
 const FOREGROUND_POLL_MS = 5000;
 const EVENTS_POLL_MS = 1000;
 const STREAM_METADATA_POLL_MS = 1500;
+const CAPTURE_SOURCE_POLL_MS = 1500;
 const DEVICE_SETTINGS_POLL_MS = 3000;
 
 const ANDROID_DEVICE_SETTING_KEYS: readonly AndroidDeviceSettingKey[] = [
@@ -149,6 +157,12 @@ type ServeEmuApiInfo = {
   stream?: unknown;
 };
 
+type ScopedAndroidCaptureState = AndroidCaptureSnapshot & {
+  scope: string;
+  pending: boolean;
+  error: string | null;
+};
+
 function isIceServer(value: unknown): value is WebRtcIceServer {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const candidate = value as Record<string, unknown>;
@@ -207,6 +221,7 @@ export function useAndroidDeviceClient(options: DeviceConnectionOptions): Device
   const [foregroundApp, setForegroundApp] = useState<ForegroundApp | null>(null);
   const [serverStreamSettings, setServerStreamSettings] =
     useState<ServeEmuStreamSettings | null>(null);
+  const [captureState, setCaptureState] = useState<ScopedAndroidCaptureState | null>(null);
   const [webRtcVideoElement, setWebRtcVideoElement] = useState<HTMLVideoElement | null>(null);
   const [webRtcVideoReady, setWebRtcVideoReady] = useState(false);
   const [webRtcInputReady, setWebRtcInputReady] = useState(false);
@@ -227,9 +242,18 @@ export function useAndroidDeviceClient(options: DeviceConnectionOptions): Device
   });
   const deviceSettingScope = `${active ? 'active' : 'inactive'}\0${baseUrl ?? ''}\0${targetDevice ?? ''}`;
   const deviceSettingScopeRef = useRef(deviceSettingScope);
+  const captureScope = deviceSettingScope;
+  const captureScopeRef = useRef(captureScope);
+  const captureActionRef = useRef(0);
+  const captureWriteRef = useRef<{
+    id: number;
+    scope: string;
+    controller: AbortController;
+  } | null>(null);
   useLayoutEffect(() => {
     deviceSettingScopeRef.current = deviceSettingScope;
-  }, [deviceSettingScope]);
+    captureScopeRef.current = captureScope;
+  }, [captureScope, deviceSettingScope]);
 
   const attachVideo = useCallback(
     (el: HTMLCanvasElement | HTMLImageElement | HTMLVideoElement | null) => {
@@ -397,6 +421,201 @@ export function useAndroidDeviceClient(options: DeviceConnectionOptions): Device
     [setDeviceSetting],
   );
 
+  // ── Android capture source ──
+  // Capture source is a server-side setting and is independent from the
+  // browser's WebSocket/WebRTC transport. Keep the response scoped to the
+  // selected serial so a late GET/PUT from the previous device cannot update
+  // the next device's controls.
+  useEffect(() => {
+    const scope = captureScope;
+    captureActionRef.current += 1;
+    setCaptureState(null);
+    if (!active || !baseUrl) return;
+
+    let cancelled = false;
+    let polling = false;
+    let controller: AbortController | null = null;
+    const url = deviceApiUrl(baseUrl, '/api/stream-mode', targetDevice);
+
+    const refresh = async () => {
+      if (cancelled || polling || captureWriteRef.current?.scope === scope) return;
+      polling = true;
+      controller = new AbortController();
+      try {
+        const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+        let payload: unknown = null;
+        try {
+          payload = await response.json();
+        } catch {}
+        if (!response.ok) {
+          throw new Error(
+            androidCaptureErrorMessage(
+              payload,
+              `Capture source request failed (${response.status})`,
+            ),
+          );
+        }
+        const snapshot = parseAndroidCaptureSnapshot(payload);
+        if (!snapshot) throw new Error('Invalid capture source response');
+        if (
+          cancelled ||
+          captureScopeRef.current !== scope ||
+          captureWriteRef.current?.scope === scope
+        ) {
+          return;
+        }
+        setCaptureState((current) => {
+          const next: ScopedAndroidCaptureState = {
+            ...snapshot,
+            scope,
+            pending: false,
+            error: null,
+          };
+          if (
+            current?.scope === scope &&
+            current.serial === next.serial &&
+            current.mode === next.mode &&
+            current.generation === next.generation &&
+            current.error === null &&
+            current.availableModes.length === next.availableModes.length &&
+            current.availableModes.every((mode, index) => mode === next.availableModes[index])
+          ) {
+            return current;
+          }
+          return next;
+        });
+      } catch (cause) {
+        if (cancelled || controller?.signal.aborted || captureScopeRef.current !== scope) return;
+        const message = cause instanceof Error ? cause.message : 'Capture source is unavailable';
+        // A server without the endpoint simply leaves `capture` null, hiding
+        // the control. Once loaded, preserve the last good state and surface
+        // temporary polling failures alongside it.
+        setCaptureState((current) =>
+          current?.scope === scope && current.error !== message
+            ? { ...current, error: message }
+            : current,
+        );
+      } finally {
+        polling = false;
+        controller = null;
+      }
+    };
+
+    void refresh();
+    const timer = setInterval(refresh, CAPTURE_SOURCE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      controller?.abort();
+      const write = captureWriteRef.current;
+      if (write?.scope === scope) {
+        write.controller.abort();
+        captureWriteRef.current = null;
+      }
+      captureActionRef.current += 1;
+    };
+  }, [active, baseUrl, captureScope, targetDevice]);
+
+  const setCaptureMode = useCallback(
+    (mode: AndroidCaptureSource) => {
+      const current = captureState;
+      const scope = captureScope;
+      if (
+        !active ||
+        !baseUrl ||
+        !current ||
+        current.scope !== scope ||
+        current.pending ||
+        current.mode === mode ||
+        !current.availableModes.includes(mode) ||
+        captureWriteRef.current?.scope === scope
+      ) {
+        return;
+      }
+
+      const id = ++captureActionRef.current;
+      const controller = new AbortController();
+      captureWriteRef.current = { id, scope, controller };
+      setCaptureState((state) =>
+        state?.scope === scope ? { ...state, pending: true, error: null } : state,
+      );
+      const url = deviceApiUrl(baseUrl, '/api/stream-mode', targetDevice);
+
+      void (async () => {
+        try {
+          const response = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode }),
+            signal: controller.signal,
+          });
+          let payload: unknown = null;
+          try {
+            payload = await response.json();
+          } catch {}
+          if (!response.ok) {
+            throw new Error(
+              androidCaptureErrorMessage(
+                payload,
+                `Capture source update failed (${response.status})`,
+              ),
+            );
+          }
+          const snapshot = parseAndroidCaptureSnapshot(payload);
+          if (!snapshot || snapshot.serial !== current.serial) {
+            throw new Error('Invalid capture source update response');
+          }
+          if (
+            controller.signal.aborted ||
+            captureActionRef.current !== id ||
+            captureScopeRef.current !== scope
+          ) {
+            return;
+          }
+          setCaptureState({
+            ...snapshot,
+            scope,
+            pending: false,
+            error: null,
+          });
+        } catch (cause) {
+          if (
+            controller.signal.aborted ||
+            captureActionRef.current !== id ||
+            captureScopeRef.current !== scope
+          ) {
+            return;
+          }
+          const message = cause instanceof Error ? cause.message : 'Capture source update failed';
+          setCaptureState((state) =>
+            state?.scope === scope ? { ...state, pending: false, error: message } : state,
+          );
+        } finally {
+          if (captureWriteRef.current?.id === id) captureWriteRef.current = null;
+          if (captureActionRef.current === id && captureScopeRef.current === scope) {
+            setCaptureState((state) =>
+              state?.scope === scope && state.pending ? { ...state, pending: false } : state,
+            );
+          }
+        }
+      })();
+    },
+    [active, baseUrl, captureScope, captureState, targetDevice],
+  );
+
+  const capture: DeviceCaptureController | null =
+    captureState?.scope === captureScope
+      ? {
+          mode: captureState.mode,
+          availableModes: captureState.availableModes,
+          generation: captureState.generation,
+          pending: captureState.pending,
+          error: captureState.error,
+          setMode: setCaptureMode,
+        }
+      : null;
+  const captureGeneration = capture?.generation ?? 0;
+
   // ── Stream metadata ──
   // serve-emu locks its host transport at launch. Poll the device-scoped API so
   // the viewer only offers WebRTC when that transport is actually configured,
@@ -474,6 +693,7 @@ export function useAndroidDeviceClient(options: DeviceConnectionOptions): Device
     sendIceServersInOffer: false,
     allowCodecFallback: false,
     onKeyframeNeeded: requestWebRtcKeyframe,
+    restartKey: captureGeneration,
   });
 
   useEffect(() => {
@@ -879,7 +1099,14 @@ export function useAndroidDeviceClient(options: DeviceConnectionOptions): Device
     // Reconnect only when the target device or server changes — not on every
     // status/fps/screen state update this effect writes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, baseUrl, targetDevice, waitingForWebRtcMetadata, useWebRtc]);
+  }, [
+    active,
+    baseUrl,
+    captureGeneration,
+    targetDevice,
+    waitingForWebRtcMetadata,
+    useWebRtc,
+  ]);
 
   // ── WebRTC input WebSocket ──
   // Video travels over the peer connection, but low-latency JSON input and
@@ -951,7 +1178,7 @@ export function useAndroidDeviceClient(options: DeviceConnectionOptions): Device
       if (wsRef.current === ws) wsRef.current = null;
       setWebRtcInputReady(false);
     };
-  }, [active, baseUrl, targetDevice, useWebRtc]);
+  }, [active, baseUrl, captureGeneration, targetDevice, useWebRtc]);
 
   // ── Logcat (SSE, best-effort) — off by default; opt-in via attach ──
   useEffect(() => {
@@ -1229,6 +1456,7 @@ export function useAndroidDeviceClient(options: DeviceConnectionOptions): Device
     deviceSettings,
     deviceSettingsPending,
     setDeviceSetting,
+    capture,
     streamSettings: null,
     streamSettingsPending: false,
     updateStreamSettings: () => {},

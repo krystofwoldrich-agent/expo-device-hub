@@ -1,6 +1,7 @@
 {
   "name": "expo-device-hub",
   "version": "0.7.1",
+  "type": "module",
   "description": "Expo DevTools plugin for managing iOS simulators and Android emulators.",
   "keywords": [
     "expo",
@@ -37,12 +38,13 @@
     "vendor/serve-sim/dist/bin",
     "vendor/serve-sim/LICENSE",
     "vendor/serve-sim/NOTICE",
-    "vendor/serve-emu/dist/*.js",
+    "vendor/serve-emu/dist",
     "vendor/serve-emu/vendor",
     "vendor/serve-emu/LICENSE",
     "/expo-module.config.json"
   ],
   "dependencies": {
+    "@fastify/busboy": "^3.2.0",
     "node-datachannel": "^0.32.3",
     "ws": "^8.21.0",
     "zustand": "^5.0.15"

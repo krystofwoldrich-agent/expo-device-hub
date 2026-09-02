@@ -56,6 +56,16 @@ function inspectorClient(platform: DevicePlatform): DeviceClient {
           httpCodecs: ['h264'],
           webRtcCodecs: ['h264'],
         },
+    capture: ios
+      ? null
+      : {
+          mode: 'grpc-stream',
+          availableModes: ['scrcpy', 'grpc-screenshot', 'grpc-stream'],
+          generation: 3,
+          pending: false,
+          error: null,
+          setMode: () => {},
+        },
     streamSettings: ios
       ? {
           mjpegFps: 60,
@@ -205,6 +215,11 @@ test('limits Android stream controls to the transports and H.264 codecs serve-em
 
   expect(segmentedControlMarkup(html, 'Stream transport')).toContain('>WebSocket</button>');
   expect(segmentedControlMarkup(html, 'Stream transport')).toContain('>WebRTC</button>');
+  const captureSource = switchMarkup(html, 'Capture source');
+  expect(captureSource).toContain('>gRPC stream<');
+  expect(html.indexOf('aria-label="Capture source"')).toBeLessThan(
+    html.indexOf('aria-label="Stream transport"'),
+  );
   expect(segmentedControlMarkup(html, 'WebSocket codec')).toContain('>H.264</button>');
   expect(segmentedControlMarkup(html, 'WebRTC codec')).toContain('>H.264</button>');
   expect(html).not.toContain('>HTTP</button>');
@@ -212,6 +227,46 @@ test('limits Android stream controls to the transports and H.264 codecs serve-em
   expect(html).not.toContain('>VP8</button>');
   expect(html).not.toContain('>VP9</button>');
   expect(html).not.toContain('>Max size</span>');
+});
+
+test('hides capture-source controls when the backend does not expose them', () => {
+  const client = { ...inspectorClient('android'), capture: null } satisfies DeviceClient;
+  const html = renderToStaticMarkup(
+    <StreamOptionsSection
+      client={client}
+      defaultOpen
+      streamMode="h264"
+      httpCodec="h264"
+      onStreamModeChange={() => {}}
+      onHttpCodecChange={() => {}}
+    />,
+  );
+
+  expect(html).not.toContain('aria-label="Capture source"');
+  expect(html).toContain('aria-label="Stream transport"');
+});
+
+test('disables the capture-source control while a source switch is pending', () => {
+  const android = inspectorClient('android');
+  const client = {
+    ...android,
+    capture: {
+      ...android.capture!,
+      mode: 'scrcpy',
+      availableModes: ['scrcpy', 'grpc-stream'],
+      pending: true,
+      error: 'The stream replacement failed',
+    },
+  } satisfies DeviceClient;
+  const html = renderToStaticMarkup(
+    <StreamOptionsSection client={client} defaultOpen streamMode="h264" httpCodec="h264" />,
+  );
+  const captureSource = switchMarkup(html, 'Capture source');
+
+  expect(captureSource).toContain('>scrcpy<');
+  expect(captureSource).toContain('disabled=""');
+  expect(html).toContain('role="alert"');
+  expect(html).toContain('The stream replacement failed');
 });
 
 test('explains when the Android host was not launched with WebRTC', () => {

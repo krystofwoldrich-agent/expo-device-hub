@@ -8,6 +8,7 @@ describe('parseCliOptions', () => {
       port: undefined,
       host: '127.0.0.1',
       platform: undefined,
+      androidCaptureSource: undefined,
       transport: undefined,
       webrtcCodec: undefined,
       maxDimension: undefined,
@@ -33,6 +34,32 @@ describe('parseCliOptions', () => {
 
   test('rejects unsupported platforms', () => {
     expect(() => parseCliOptions(['--platform', 'web'])).toThrow('Invalid --platform: web');
+  });
+
+  test('accepts each Android capture source', () => {
+    expect(parseCliOptions(['--android-capture-source', 'scrcpy']).androidCaptureSource).toBe(
+      'scrcpy'
+    );
+    expect(
+      parseCliOptions(['--android-capture-source=grpc-screenshot']).androidCaptureSource
+    ).toBe('grpc-screenshot');
+    expect(parseCliOptions(['--android-capture-source', 'grpc-stream']).androidCaptureSource).toBe(
+      'grpc-stream'
+    );
+  });
+
+  test('validates the Android capture source and rejects it for an explicit iOS filter', () => {
+    expect(() => parseCliOptions(['--android-capture-source', 'screenrecord'])).toThrow(
+      'Invalid --android-capture-source: screenrecord'
+    );
+    expect(() =>
+      parseCliOptions([
+        '--platform',
+        'ios',
+        '--android-capture-source',
+        'grpc-stream',
+      ])
+    ).toThrow('--android-capture-source is supported only for Android');
   });
 
   test('accepts each supported transport', () => {
@@ -180,6 +207,12 @@ describe('parseCliOptions', () => {
     }
   });
 
+  test('documents the Android capture source separately from browser transport', () => {
+    expect(HELP).toContain('--android-capture-source <source>');
+    expect(HELP).toContain('scrcpy, grpc-screenshot, grpc-stream');
+    expect(HELP).toContain('--transport <transport>');
+  });
+
   test('hides the device list sidebar on request', () => {
     expect(parseCliOptions(['--hide-sidebar']).hideSidebar).toBe(true);
     expect(HELP).toContain('--hide-sidebar');
@@ -203,6 +236,7 @@ describe('parseCliOptions', () => {
       port: 4300,
       host: '0.0.0.0',
       platform: undefined,
+      androidCaptureSource: undefined,
       transport: undefined,
       webrtcCodec: undefined,
       maxDimension: undefined,

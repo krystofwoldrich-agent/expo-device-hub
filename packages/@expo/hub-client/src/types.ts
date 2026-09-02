@@ -24,6 +24,20 @@ export type DevicePlatform = 'ios' | 'android';
 /** Viewer-selected transport for the active device stream. */
 export type DeviceStreamMode = 'mjpeg' | 'h264' | 'webrtc';
 
+/** Server-side Android frame acquisition, independent of browser delivery. */
+export type AndroidCaptureSource = 'scrcpy' | 'grpc-screenshot' | 'grpc-stream';
+
+/** Runtime Android capture-source state exposed by serve-emu. */
+export interface DeviceCaptureController {
+  mode: AndroidCaptureSource;
+  availableModes: readonly AndroidCaptureSource[];
+  /** Increases whenever serve-emu publishes a replacement capture session. */
+  generation: number;
+  pending: boolean;
+  error: string | null;
+  setMode: (mode: AndroidCaptureSource) => void;
+}
+
 /**
  * Lifecycle of a single connection:
  *   idle       — nothing to connect to (no base URL / disabled)
@@ -328,6 +342,8 @@ export interface DeviceClient {
 
   /** Backend-supported viewer transport and codec choices; null hides stream controls. */
   streamCapabilities: DeviceStreamCapabilities | null;
+  /** Android server-side capture source; null for iOS and unsupported serve-emu versions. */
+  capture: DeviceCaptureController | null;
   /** Runtime encoder settings, available only when `capabilities.streamSettings` is true. */
   streamSettings: DeviceStreamEncoderSettings | null;
   streamSettingsPending: boolean;

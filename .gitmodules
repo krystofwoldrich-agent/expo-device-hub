@@ -7,5 +7,5 @@
 [submodule "packages/serve-emu"]
 	path = packages/serve-emu
 	url = https://github.com/expo/serve-emu.git
-	branch = expo
+	branch = temperature-fps-experiments-experimental
 	ignore = untracked

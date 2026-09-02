@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import {
+  type AndroidCaptureSource,
   type DeviceClient,
   type DeviceHttpCodec,
   type DeviceStreamCapabilities,
@@ -47,6 +48,12 @@ const DEFAULT_STREAM_CAPABILITIES = {
 } as const satisfies DeviceStreamCapabilities;
 
 const STREAM_MODE_ORDER: readonly DeviceStreamMode[] = ['mjpeg', 'h264', 'webrtc'];
+
+const CAPTURE_SOURCE_OPTIONS = [
+  { value: 'scrcpy', label: 'scrcpy' },
+  { value: 'grpc-screenshot', label: 'gRPC legacy' },
+  { value: 'grpc-stream', label: 'gRPC stream' },
+] as const satisfies ReadonlyArray<{ value: AndroidCaptureSource; label: string }>;
 
 const HTTP_CODEC_OPTIONS = [
   { value: 'auto', label: 'Auto' },
@@ -136,6 +143,7 @@ export function StreamOptionsSection({
     backend.webRtcCodecs.includes(option.value),
   );
   const settings = client.streamSettings ?? DEFAULT_SETTINGS;
+  const capture = client.capture;
   const settingsReady = client.streamSettings !== null;
   const settingsDisabled = !settingsReady || client.streamSettingsPending;
   const transport: StreamTransport =
@@ -200,6 +208,33 @@ export function StreamOptionsSection({
 
   return (
     <CollapsibleSection title="Stream options" open={open} onOpenChange={setOpen}>
+      {capture && (
+        <>
+          <SidebarRow label="Capture source">
+            <Select
+              ariaLabel="Capture source"
+              options={CAPTURE_SOURCE_OPTIONS.filter((option) =>
+                capture.availableModes.includes(option.value),
+              )}
+              value={capture.mode}
+              disabled={capture.pending}
+              onChange={(mode: AndroidCaptureSource) => capture.setMode(mode)}
+            />
+          </SidebarRow>
+          {capture.error && (
+            <span
+              role="alert"
+              style={{
+                ...textSize.xs,
+                display: 'block',
+                padding: '0 0 8px',
+                color: text.danger,
+              }}>
+              {capture.error}
+            </span>
+          )}
+        </>
+      )}
       <SidebarRow label="Transport">
         <SegmentedControl
           ariaLabel="Stream transport"

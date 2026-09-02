@@ -44,6 +44,22 @@ describe('standaloneServeEmuOptions', () => {
     });
   });
 
+  test('maps the Android capture source onto serve-emu without changing browser transport', () => {
+    expect(
+      standaloneServeEmuOptions(
+        parseCliOptions([
+          '--android-capture-source',
+          'grpc-stream',
+          '--transport',
+          'h264',
+        ]),
+      ),
+    ).toEqual({
+      streamMode: 'grpc-stream',
+      streamSettings: { transport: 'websocket' },
+    });
+  });
+
   test('maps host WebRTC settings while keeping Android on H.264', () => {
     expect(
       standaloneServeEmuOptions(
@@ -113,7 +129,14 @@ describe('standaloneServeEmuOptions', () => {
   });
 
   test('round-trips through the server environment payload', () => {
-    const options = parseCliOptions(['--transport', 'webrtc', '--video-fps', '30']);
+    const options = parseCliOptions([
+      '--transport',
+      'webrtc',
+      '--video-fps',
+      '30',
+      '--android-capture-source',
+      'grpc-stream',
+    ]);
     expect(readStandaloneServeEmuOptions(encodeStandaloneServeEmuOptions(options))).toEqual(
       standaloneServeEmuOptions(options),
     );
