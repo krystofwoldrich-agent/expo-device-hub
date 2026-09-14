@@ -44,7 +44,8 @@ workflow integration helpers are maintained outside this repository.
 
 ## Build
 
-Build and benchmark helpers use JavaScript and Bun Shell (tested with Bun 1.3.14).
+Build and benchmark helpers require Bun 1.3.14 or newer. The NVRTC compiler uses
+`process.execve`, which was added in Bun 1.3.14, to set its library search path.
 All maintained scripts are `.mjs`; FFmpeg still uses its upstream
 configure/Makefile internally.
 Package commands invoke their script files directly; `build` chains the five
