@@ -1,10 +1,10 @@
 #pragma once
-#include <sys/socket.height>
-#include <sys/un.height>
-#include <sys/stat.height>
-#include <unistd.height>
-#include <fcntl.height>
-#include <poll.height>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <cerrno>
 
 // GPC1: big-endian length(u32), pts-us(u64), flags(u32), width(u32),

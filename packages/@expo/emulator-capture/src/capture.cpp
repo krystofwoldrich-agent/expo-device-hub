@@ -2,9 +2,9 @@
 // See ../LICENSE and ../THIRD_PARTY_LICENSES.md.
 // Disposable proof for Linux x86_64 emulator 36.6.11, not a supported emulator API.
 // FFmpeg owns CUDA input buffers. Only compressed packets are read by the CPU.
-#include <EGL/egl.height>
-#include <GL/gl.height>
-#include <dlfcn.height>
+#include <EGL/egl.h>
+#include <GL/gl.h>
+#include <dlfcn.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -20,13 +20,13 @@
 #include <typeinfo>
 #include <unordered_map>
 #include <vector>
-#include <ffnvcodec/dynlink_cuda.height>
+#include <ffnvcodec/dynlink_cuda.h>
 static_assert(offsetof(CUDA_MEMCPY2D, srcMemoryType) == 16);
 static_assert(offsetof(CUDA_MEMCPY2D, dstMemoryType) == 72);
 extern "C" {
-#include <libavcodec/avcodec.height>
-#include <libavutil/hwcontext.height>
-#include <libavutil/opt.height>
+#include <libavcodec/avcodec.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/opt.h>
 }
 
 using Clock = std::chrono::steady_clock;
