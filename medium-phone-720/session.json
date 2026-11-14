@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "udid": "emulator-5582",
+  "deviceName": "Medium_Phone_EAS_720",
+  "runtimeDisplayName": "Android 17.0",
+  "status": "complete",
+  "recording": "recording.mp4",
+  "firstFrameWallClock": {
+    "iso8601": "2026-11-14T01:52:01.170Z"
+  },
+  "width": 720,
+  "height": 1600,
+  "deviceStates": [
+    {
+      "timeMs": 0,
+      "state": {
+        "width": 720,
+        "height": 1600,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 720,
+          "height": 1600
+        },
+        "orientation": "portrait"
+      }
+    },
+    {
+      "timeMs": 128619,
+      "state": {
+        "width": 720,
+        "height": 1600,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 720,
+          "height": 1600
+        },
+        "orientation": "landscape_left"
+      }
+    },
+    {
+      "timeMs": 130670,
+      "state": {
+        "width": 720,
+        "height": 1600,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 720,
+          "height": 1600
+        },
+        "orientation": "portrait"
+      }
+    },
+    {
+      "timeMs": 140008,
+      "state": {
+        "width": 720,
+        "height": 1600,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 720,
+          "height": 1600
+        },
+        "orientation": "landscape_left"
+      }
+    },
+    {
+      "timeMs": 140041,
+      "state": {
+        "width": 720,
+        "height": 1600,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 720,
+          "height": 1600
+        },
+        "orientation": "portrait"
+      }
+    }
+  ],
+  "durationSeconds": 193.756418,
+  "stopReason": "session-stop",
+  "frames": 1356
+}

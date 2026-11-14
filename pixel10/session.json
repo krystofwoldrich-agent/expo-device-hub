@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "udid": "emulator-5580",
+  "deviceName": "Pixel_10",
+  "runtimeDisplayName": "Android 17.0",
+  "status": "complete",
+  "recording": "recording.mp4",
+  "firstFrameWallClock": {
+    "iso8601": "2026-11-14T01:42:07.518Z"
+  },
+  "width": 1080,
+  "height": 2424,
+  "deviceStates": [
+    {
+      "timeMs": 0,
+      "state": {
+        "width": 1080,
+        "height": 2424,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "height": 2424
+        },
+        "orientation": "portrait"
+      }
+    },
+    {
+      "timeMs": 306522,
+      "state": {
+        "width": 1080,
+        "height": 2424,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "height": 2424
+        },
+        "orientation": "landscape_left"
+      }
+    },
+    {
+      "timeMs": 316590,
+      "state": {
+        "width": 1080,
+        "height": 2424,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "height": 2424
+        },
+        "orientation": "portrait"
+      }
+    },
+    {
+      "timeMs": 352209,
+      "state": {
+        "width": 1080,
+        "height": 2424,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "height": 2424
+        },
+        "orientation": "landscape_left"
+      }
+    },
+    {
+      "timeMs": 356632,
+      "state": {
+        "width": 1080,
+        "height": 2424,
+        "contentRect": {
+          "x": 0,
+          "y": 0,
+          "width": 1080,
+          "height": 2424
+        },
+        "orientation": "portrait"
+      }
+    }
+  ],
+  "durationSeconds": 375.436876,
+  "stopReason": "session-stop",
+  "frames": 1208
+}
