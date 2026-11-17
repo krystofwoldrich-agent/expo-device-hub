@@ -1,0 +1,77 @@
+<section id="macos-detailed-flow">
+  <svg viewBox="0 0 1120 862" role="img" aria-labelledby="capture-title capture-desc">
+    <title id="capture-title">macOS emulator capture: frame posts, copying, encoding, and delivery</title>
+    <desc id="capture-desc">Seventeen separate stages flow from left to right. Inside QEMU, the Frida Gum post hook applies the FPS gate, then either blits a host GPU texture and submits it with glFlush, or reads RGBA on the CPU and converts to BGRA. IOSurface pixel buffers enter a bounded queue. The encoder worker waits for GPU writes, optionally rotates, scales and converts to NV12, then uses VideoToolbox H264. GPC1 packets go through serve-emu, WebRTC, and the browser.</desc>
+    <defs>
+      <marker id="capture-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+        <path d="M1 1L8 5 1 9" class="arrow-head"/>
+      </marker>
+    </defs>
+    <rect width="1120" height="862" class="background"/>
+    <rect x="8" y="12" width="824" height="820" rx="10" class="boundary"/>
+    <text x="420" y="42" text-anchor="middle" class="group-title">QEMU process + preloaded capture agent</text>
+    <rect x="560" y="62" width="256" height="748" rx="8" class="boundary"/>
+    <text x="688" y="94" text-anchor="middle" class="group-title">Encoder worker</text>
+    <text x="134" y="94" text-anchor="middle" class="group-title">Frame posts</text>
+    <text x="410" y="94" text-anchor="middle" class="group-title">Frame copy</text>
+    <text x="962" y="94" text-anchor="middle" class="group-title">Stream delivery</text>
+    <g data-edges></g>
+    <g data-nodes></g>
+    <text x="16" y="854" class="note">GPU blit still copies pixels. Input uses scrcpy; the diagram shows the video path.</text>
+  </svg>
+</section>
+<style>
+#macos-detailed-flow svg { display: block; width: 100%; height: auto; font-family: var(--font-sans); }
+#macos-detailed-flow .background { fill: var(--background); }
+#macos-detailed-flow .boundary { fill: none; stroke: color-mix(in srgb,var(--foreground) 25%,var(--background)); stroke-width: 1; }
+#macos-detailed-flow .box { fill: var(--background); stroke: color-mix(in srgb,var(--foreground) 42%,var(--background)); stroke-width: 1.2; }
+#macos-detailed-flow .gpu { fill: color-mix(in srgb,var(--chart-1) 9%,var(--background)); }
+#macos-detailed-flow .cpu { fill: color-mix(in srgb,var(--chart-2) 9%,var(--background)); }
+#macos-detailed-flow text { fill: var(--foreground); font-size: 19px; font-weight: 400; }
+#macos-detailed-flow .group-title, #macos-detailed-flow .title { font-weight: 500; }
+#macos-detailed-flow .detail, #macos-detailed-flow .note { font-size: 18px; }
+#macos-detailed-flow .edge, #macos-detailed-flow .arrow-head { fill: none; stroke: color-mix(in srgb,var(--foreground) 68%,var(--background)); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+</style>
+<script>
+(() => {
+  const root = document.getElementById("macos-detailed-flow");
+  const nodes = [
+    {x:24,y:126,w:220,h:70,title:"Android frame",lines:["Guest / gfxstream"]},
+    {x:24,y:260,w:220,h:92,title:"Frida Gum hook",lines:["postImpl()","Render thread"]},
+    {x:24,y:400,w:220,h:60,title:"FPS gate",lines:[]},
+    {x:300,y:200,w:220,h:70,title:"GPU texture blit",lines:["-gpu host"],cls:"gpu"},
+    {x:300,y:310,w:220,h:70,title:"glFlush",lines:["Submit the GPU copy"],cls:"gpu"},
+    {x:300,y:465,w:220,h:70,title:"Read RGBA",lines:["CPU readback / wait"],cls:"cpu"},
+    {x:300,y:570,w:220,h:70,title:"Convert to BGRA",lines:["vImage"],cls:"cpu"},
+    {x:300,y:680,w:220,h:70,title:"IOSurface buffer",lines:["Retained CVPixelBuffer"]},
+    {x:300,y:780,w:220,h:40,title:"Bounded frame queue",lines:[]},
+    {x:576,y:200,w:224,h:78,title:"Wait for GPU writes",lines:["IOSurfaceLock","GPU path only"]},
+    {x:576,y:360,w:224,h:70,title:"Rotate if needed",lines:["VTPixelRotationSession"]},
+    {x:576,y:520,w:224,h:78,title:"Scale + convert",lines:["NV12","VTPixelTransferSession"]},
+    {x:576,y:680,w:224,h:90,title:"H.264 encoder",lines:["VideoToolbox","Hardware if available"]},
+    {x:852,y:200,w:220,h:78,title:"GPC1 Unix socket",lines:["H.264 packets","Frame timestamps"]},
+    {x:852,y:360,w:220,h:70,title:"serve-emu",lines:["Forward H.264"]},
+    {x:852,y:520,w:220,h:78,title:"WebRTC",lines:["RTP transport"]},
+    {x:852,y:680,w:220,h:90,title:"Browser",lines:["Decode","Display"]}
+  ];
+  const esc = s => s.replaceAll("&","&amp;").replaceAll("<","&lt;");
+  root.querySelector("[data-nodes]").innerHTML = nodes.map(n => {
+    const ty = n.lines.length ? n.y+27 : n.y+n.h/2+7;
+    return '<rect x="'+n.x+'" y="'+n.y+'" width="'+n.w+'" height="'+n.h+'" rx="6" class="box '+(n.cls||'')+'"/>'+
+      '<text x="'+(n.x+n.w/2)+'" y="'+ty+'" text-anchor="middle" class="title">'+esc(n.title)+'</text>'+
+      n.lines.map((t,i)=>'<text x="'+(n.x+n.w/2)+'" y="'+(ty+24+i*21)+'" text-anchor="middle" class="detail">'+esc(t)+'</text>').join('');
+  }).join('');
+  const edges = [
+    "M134 202V250", "M134 358V390",
+    "M250 430H270V235H290", "M270 430V500H290",
+    "M410 276V300", "M410 541V560", "M410 646V670",
+    "M526 345H542V656H410V670",
+    "M410 756V770", "M526 800H550V239H566",
+    "M688 284V350", "M688 436V510", "M688 604V670",
+    "M806 725H840V239H842",
+    "M962 284V350", "M962 436V510", "M962 604V670"
+  ];
+  root.querySelector("[data-edges]").innerHTML = edges.map(d=>'<path d="'+d+'" class="edge" marker-end="url(#capture-arrow)"/>').join('');
+})();
+</script>
+
